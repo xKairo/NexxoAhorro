@@ -20,14 +20,6 @@ document.addEventListener('DOMContentLoaded', () => {
         link.addEventListener('click', (e) => {
             const target = e.currentTarget.getAttribute('data-target');
             if (target) {
-                if (target === 'calculatorView' && !currentUser) {
-                    authModal.classList.remove('hidden');
-                    authErrorMsg.className = "text-indigo-600 text-sm font-medium bg-indigo-50 border border-indigo-100 p-3 rounded-lg flex items-center gap-2";
-                    authErrorMsg.querySelector('span').textContent = "Inicia sesión gratis para desbloquear la Calculadora y guardar tu dinero en la nube.";
-                    authErrorMsg.classList.remove('hidden');
-                    if (authMode.value !== 'login') authToggleBtn.click();
-                    return;
-                }
                 switchView(target);
             }
         });
@@ -481,15 +473,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     addCardForm.addEventListener('submit', (e) => {
         e.preventDefault();
-
-        if (!currentUser) {
-            authModal.classList.remove('hidden');
-            authErrorMsg.className = "text-indigo-600 text-sm font-medium bg-indigo-50 border border-indigo-100 p-3 rounded-lg flex items-center gap-2";
-            authErrorMsg.querySelector('span').textContent = "Inicia sesión para guardar tus tarjetas en la nube y sincronizarlas con tu presupuesto.";
-            authErrorMsg.classList.remove('hidden');
-            if (authMode.value !== 'login') authToggleBtn.click();
-            return;
-        }
 
         const card = {
             name: document.getElementById('cardName').value,
