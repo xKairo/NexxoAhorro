@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NexxoAhorro - Geolocalización de Bancos</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tailwind Config -->
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            slate: '#1e293b',
+                            gray: '#f3f4f6',
+                            mint: '#34d399',
+                            accent: '#6366f1'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: #475569; }
+        #leafletMap { z-index: 10; }
+        .custom-leaflet-marker { background: none; border: none; }
+    </style>
+</head>
+
+<body class="bg-gray-50 text-slate-800 font-sans antialiased min-h-screen flex flex-col transition-colors duration-500 dark:bg-slate-900 dark:text-gray-100">
+    
+    <!-- Navbar -->
+    <nav class="bg-brand-slate shadow-xl py-4 px-4 sm:px-8 sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto flex items-center justify-between">
+            <a href="index.html" class="text-xl sm:text-2xl font-bold text-white flex items-center gap-2 hover:text-brand-mint transition-colors">
+                <i class="ph-fill ph-wallet text-brand-mint text-3xl"></i> NexxoAhorro
+            </a>
+
+            <div class="flex items-center gap-4">
+                <a href="index.html" class="hidden sm:flex items-center gap-1 text-sm font-medium text-gray-300 hover:text-white transition-colors">
+                    <i class="ph-bold ph-layout"></i> Volver al Dashboard
+                </a>
+                
+                <!-- Theme Toggle -->
+                <button id="themeToggleBtn" class="text-gray-400 hover:text-brand-mint focus:outline-none transition-colors p-1" title="Cambiar Tema">
+                    <i class="ph-bold ph-moon text-2xl" id="themeToggleIcon"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Content Area -->
+    <main class="flex-grow w-full max-w-7xl mx-auto p-4 md:p-8">
+        
+        <!-- Header -->
+        <div class="mb-8 text-center md:text-left">
+            <h1 class="text-3xl md:text-4xl font-extrabold text-slate-800 dark:text-white tracking-tight">
+                Encuentra tu <span class="text-transparent bg-clip-text bg-gradient-to-r from-brand-accent to-brand-mint">Banco o Cajero</span>
+            </h1>
+            <p class="text-gray-500 dark:text-gray-400 mt-2 font-medium">Localiza sucursales cercanas permitiendo tu ubicación. Máximo 30 km.</p>
+        </div>
+
+        <div class="flex flex-col lg:flex-row gap-6">
+            
+            <!-- Panel Lateral: Controles y Lista -->
+            <div class="w-full lg:w-1/3 flex flex-col gap-6">
+                
+                <!-- Card de Filtros -->
+                <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700">
+                    <h3 class="text-lg font-bold mb-4 text-brand-slate dark:text-white flex items-center gap-2">
+                        <i class="ph-fill ph-funnel text-brand-accent"></i> Filtros de búsqueda
+                    </h3>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1.5 ml-1">Institución Bancaria</label>
+                            <select id="bankFilter" class="w-full px-4 py-3 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-brand-accent dark:text-white outline-none cursor-pointer font-bold appearance-none transition-all">
+                                <option value="Todos" selected>Todos los bancos</option>
+                                <option value="BBVA">BBVA</option>
+                                <option value="Banorte">Banorte</option>
+                                <option value="Santander">Santander</option>
+                                <option value="HSBC">HSBC</option>
+                                <option value="Citibanamex">Citibanamex</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1.5 ml-1">Radio de Búsqueda</label>
+                            <select id="radiusFilter" class="w-full px-4 py-3 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-brand-accent dark:text-white outline-none cursor-pointer font-bold appearance-none transition-all">
+                                <option value="1">1 Kilómetro</option>
+                                <option value="5" selected>5 Kilómetros</option>
+                                <option value="10">10 Kilómetros</option>
+                                <option value="20">20 Kilómetros</option>
+                                <option value="30">30 Kilómetros</option>
+                            </select>
+                        </div>
+                        
+                        <button id="searchBanksBtn" class="w-full bg-brand-slate dark:bg-brand-accent hover:opacity-90 text-white font-bold py-4 px-4 rounded-xl shadow-lg transition-all flex items-center justify-center gap-3 transform active:scale-95 group">
+                            <i class="ph-bold ph-magnifying-glass group-hover:scale-110 transition-transform"></i> Buscar Sucursales
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Info Box / Messages -->
+                <div id="mapStatusMessage" class="hidden animate-pulse p-4 rounded-xl text-center font-bold text-sm"></div>
+
+                <!-- Resultados List -->
+                <div class="flex-grow bg-white dark:bg-slate-800 rounded-2xl border border-gray-100 dark:border-slate-700 overflow-hidden flex flex-col shadow-sm">
+                    <div class="px-6 py-4 bg-gray-50 dark:bg-slate-900 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
+                        <span class="text-xs font-bold uppercase tracking-widest text-gray-400">Resultados</span>
+                        <span id="resultsBadge" class="hidden bg-brand-mint text-brand-slate text-[10px] font-black px-2 py-0.5 rounded-full">0</span>
+                    </div>
+                    
+                    <div class="relative overflow-hidden h-[400px]">
+                        <ul id="resultsList" class="h-full overflow-y-auto p-4 space-y-3 custom-scrollbar">
+                           <div class="h-full flex flex-col items-center justify-center text-center text-gray-400 py-10">
+                                <i class="ph ph-map-trifold text-5xl mb-3 opacity-30"></i>
+                                <p class="text-sm font-medium px-4">Presiona "Buscar" para explorar bancos cercanos a ti.</p>
+                           </div>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mapa -->
+            <div class="w-full lg:w-2/3 h-[500px] lg:h-[750px] bg-white dark:bg-slate-800 rounded-3xl overflow-hidden shadow-xl border-4 border-white dark:border-slate-800 relative ring-1 ring-gray-200 dark:ring-slate-700">
+                <div id="leafletMap" class="w-full h-full"></div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Scripts -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        /**
+         * Lógica del Mapa de Bancos Avanzado (Leaflet + Overpass)
+         */
+        const MapApp = {
+            map: null,
+            userMarker: null,
+            markersLayer: null,
+            userLocation: null,
+
+            init() {
+                this.initTheme();
+                this.initMap();
+                this.bindEvents();
+            },
+
+            initTheme() {
+                const themeBtn = document.getElementById('themeToggleBtn');
+                const themeIcon = document.getElementById('themeToggleIcon');
+                
+                // Initialize theme from localStorage
+                if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                    document.documentElement.classList.add('dark');
+                    themeIcon.className = 'ph-bold ph-sun text-2xl';
+                }
+
+                themeBtn.addEventListener('click', () => {
+                    if (document.documentElement.classList.contains('dark')) {
+                        document.documentElement.classList.remove('dark');
+                        localStorage.setItem('theme', 'light');
+                        themeIcon.className = 'ph-bold ph-moon text-2xl';
+                    } else {
+                        document.documentElement.classList.add('dark');
+                        localStorage.setItem('theme', 'dark');
+                        themeIcon.className = 'ph-bold ph-sun text-2xl';
+                    }
+                });
+            },
+
+            initMap() {
+                // Centrado inicial en México
+                this.map = L.map('leafletMap', {
+                    scrollWheelZoom: true,
+                    zoomControl: false
+                }).setView([23.6345, -102.5528], 5);
+                
+                L.control.zoom({ position: 'bottomright' }).addTo(this.map);
+
+                L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+                    attribution: '© OpenStreetMap contributors © CARTO'
+                }).addTo(this.map);
+
+                this.markersLayer = L.layerGroup().addTo(this.map);
+            },
+
+            bindEvents() {
+                const btn = document.getElementById('searchBanksBtn');
+                btn.addEventListener('click', () => this.handleSearch());
+            },
+
+            async handleSearch() {
+                this.clearResults();
+                const btn = document.getElementById('searchBanksBtn');
+                const originalText = btn.innerHTML;
+                
+                btn.disabled = true;
+                btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin"></i> Localizando...';
+                
+                this.showMessage('Solicitando acceso a ubicación...', 'blue');
+
+                try {
+                    const pos = await this.getUserLocation();
+                    this.userLocation = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+                    
+                    this.updateUserMarker();
+                    
+                    const bankName = document.getElementById('bankFilter').value;
+                    const radius = parseInt(document.getElementById('radiusFilter').value, 10);
+                    
+                    this.showMessage(`Buscando ${bankName === 'Todos' ? 'bancos' : bankName} en ${radius}km...`, 'blue');
+                    btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin"></i> Consultando Nube...';
+                    
+                    const rawData = await this.fetchOverpassData(this.userLocation.lat, this.userLocation.lon, radius, bankName);
+                    const processedBanks = this.processData(rawData.elements, radius);
+                    
+                    this.renderResults(processedBanks);
+                    
+                } catch (error) {
+                    this.showMessage(error.message || 'Error al completar la operación.', 'red');
+                    console.error("Geoloc/Overpass Error:", error);
+                } finally {
+                    btn.disabled = false;
+                    btn.innerHTML = originalText;
+                }
+            },
+
+            getUserLocation() {
+                return new Promise((resolve, reject) => {
+                    if (!navigator.geolocation) {
+                        reject(new Error("Tu navegador no soporta geolocalización."));
+                    }
+                    navigator.geolocation.getCurrentPosition(resolve, (err) => {
+                        if(err.code === 1) reject(new Error("Debes permitir tu ubicación para usar esta función."));
+                        else reject(new Error("No se pudo obtener tu ubicación. Intenta de nuevo."));
+                    }, { enableHighAccuracy: true });
+                });
+            },
+
+            updateUserMarker() {
+                if (!this.userMarker) {
+                    const userIcon = L.divIcon({
+                        html: '<div class="relative"><div class="absolute -inset-1 bg-brand-accent rounded-full animate-ping opacity-50"></div><div class="relative bg-brand-accent w-4 h-4 rounded-full border-2 border-white shadow-lg"></div></div>',
+                        className: 'custom-leaflet-marker',
+                        iconSize: [16, 16],
+                        iconAnchor: [8, 8]
+                    });
+
+                    this.userMarker = L.marker([this.userLocation.lat, this.userLocation.lon], { icon: userIcon })
+                        .addTo(this.map)
+                        .bindPopup("<b class='text-brand-accent'>Tu Ubicación Actual</b>");
+                } else {
+                    this.userMarker.setLatLng([this.userLocation.lat, this.userLocation.lon]);
+                }
+                this.map.flyTo([this.userLocation.lat, this.userLocation.lon], 14);
+            },
+
+            async fetchOverpassData(lat, lon, radiusKm, bankName) {
+                const radiusMeters = radiusKm * 1000;
+                let query = `[out:json][timeout:25];\n(\n`;
+                const types = ['node', 'way', 'relation'];
+
+                if (bankName === 'Todos') {
+                    types.forEach(t => {
+                        query += `  ${t}["amenity"~"^(bank|atm)$"](around:${radiusMeters},${lat},${lon});\n`;
+                    });
+                } else {
+                    types.forEach(t => {
+                        query += `  ${t}["amenity"~"^(bank|atm)$"]["name"~"${bankName}",i](around:${radiusMeters},${lat},${lon});\n`;
+                        query += `  ${t}["amenity"~"^(bank|atm)$"]["operator"~"${bankName}",i](around:${radiusMeters},${lat},${lon});\n`;
+                    });
+                }
+                query += `);\nout center;`;
+
+                const url = 'https://overpass-api.de/api/interpreter';
+                const response = await fetch(url, { method: 'POST', body: query });
+                if (!response.ok) throw new Error("Error al obtener datos del servidor OSM.");
+                return await response.json();
+            },
+
+            processData(elements, maxRadiusKm) {
+                let results = [];
+                const seen = new Set(); 
+
+                elements.forEach(el => {
+                    const lat = el.lat || (el.center && el.center.lat);
+                    const lon = el.lon || (el.center && el.center.lon);
+                    const tags = el.tags || {};
+                    
+                    if (!lat || !lon) return;
+
+                    const type = tags.amenity === 'atm' ? 'Cajero (ATM)' : 'Sucursal';
+                    let name = tags.name || tags.operator || `Sin nombre (${type})`;
+                    
+                    const distance = this.calculateHaversineDistance(this.userLocation.lat, this.userLocation.lon, lat, lon);
+                    const uniqueKey = `${lat.toFixed(6)},${lon.toFixed(6)}`;
+                    
+                    if (distance <= maxRadiusKm && !seen.has(uniqueKey)) {
+                        seen.add(uniqueKey);
+                        results.push({ name, type, tags, distance, lat, lon });
+                    }
+                });
+
+                return results.sort((a, b) => a.distance - b.distance);
+            },
+
+            calculateHaversineDistance(lat1, lon1, lat2, lon2) {
+                const toRad = x => (x * Math.PI) / 180;
+                const R = 6371; 
+                const dLat = toRad(lat2 - lat1);
+                const dLon = toRad(lon2 - lon1);
+                const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+                return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            },
+
+            renderResults(banks) {
+                this.clearResults();
+                const listContainer = document.getElementById('resultsList');
+                const badge = document.getElementById('resultsBadge');
+                
+                if (banks.length === 0) {
+                    this.showMessage("No encontramos nada en ese radio. Intenta con uno mayor.", "yellow");
+                    listContainer.innerHTML = '<div class="h-full flex flex-col items-center justify-center text-center text-gray-400 py-10"><i class="ph ph-mask-sad text-5xl mb-3 opacity-30"></i><p class="text-sm font-medium">No hay resultados cercanos.</p></div>';
+                    return;
+                }
+
+                this.showMessage(`Localizamos ${banks.length} puntos bancarios.`, "green");
+                badge.textContent = banks.length;
+                badge.classList.remove('hidden');
+
+                const bounds = [ [this.userLocation.lat, this.userLocation.lon] ];
+
+                banks.forEach((bank) => {
+                    const isATM = bank.type === 'Cajero (ATM)';
+                    const color = isATM ? '#818cf8' : '#10b981'; 
+                    const icon = isATM ? 'ph ph-atm' : 'ph ph-bank';
+
+                    const markerHtml = `
+                        <div class="relative group">
+                            <div class="absolute -inset-2 bg-white rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                            <div style="background-color: ${color};" class="relative w-8 h-8 rounded-full border-2 border-white shadow-md flex items-center justify-center text-white">
+                                <i class="${icon} text-sm"></i>
+                            </div>
+                        </div>`;
+                    
+                    const customIcon = L.divIcon({ html: markerHtml, className: 'custom-leaflet-marker', iconSize: [32, 32], iconAnchor: [16, 16] });
+
+                    const marker = L.marker([bank.lat, bank.lon], { icon: customIcon })
+                        .bindPopup(`
+                            <div class="p-1">
+                                <strong class="text-brand-slate block border-b pb-1 mb-1">${bank.name}</strong>
+                                <span class="text-[9px] uppercase font-bold text-gray-400">${bank.type}</span>
+                                <div class="mt-2 font-bold text-brand-accent">${bank.distance.toFixed(2)} km de distancia</div>
+                            </div>
+                        `)
+                        .addTo(this.markersLayer);
+
+                    bounds.push([bank.lat, bank.lon]);
+
+                    const li = document.createElement('li');
+                    li.className = 'p-4 bg-gray-50 dark:bg-slate-700/50 hover:bg-white dark:hover:bg-slate-700 rounded-2xl cursor-pointer transition-all border border-transparent hover:border-brand-accent/30 shadow-sm hover:shadow-md group flex items-start gap-3';
+                    li.innerHTML = `
+                        <div style="background-color: ${color};" class="w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center text-white shadow-inner">
+                            <i class="${icon} text-xl"></i>
+                        </div>
+                        <div class="flex-grow overflow-hidden">
+                            <h5 class="font-bold text-slate-800 dark:text-gray-100 text-sm truncate group-hover:text-brand-accent transition-colors">${bank.name}</h5>
+                            <div class="flex items-center justify-between mt-1">
+                                <span class="text-[10px] uppercase font-bold text-gray-400 group-hover:text-gray-300">${bank.type}</span>
+                                <span class="text-xs font-black text-brand-mint">${bank.distance.toFixed(1)} km</span>
+                            </div>
+                        </div>
+                    `;
+                    
+                    li.addEventListener('click', () => {
+                        this.map.flyTo([bank.lat, bank.lon], 17, { duration: 1.5 });
+                        setTimeout(() => marker.openPopup(), 1500); 
+                    });
+
+                    listContainer.appendChild(li);
+                });
+
+                this.map.fitBounds(bounds, { padding: [50, 50] });
+            },
+
+            clearResults() {
+                this.markersLayer.clearLayers();
+                document.getElementById('resultsList').innerHTML = '';
+                document.getElementById('resultsBadge').classList.add('hidden');
+                document.getElementById('mapStatusMessage').className = 'hidden';
+            },
+
+            showMessage(text, color) {
+                const msg = document.getElementById('mapStatusMessage');
+                msg.innerText = text;
+                msg.className = `block animate-fade-in p-4 rounded-xl text-center font-bold text-xs mb-4 shadow-sm border `;
+                
+                if (color === 'red') msg.classList.add('bg-rose-50', 'text-rose-700', 'border-rose-100');
+                else if (color === 'yellow') msg.classList.add('bg-amber-50', 'text-amber-700', 'border-amber-100');
+                else if (color === 'green') msg.classList.add('bg-emerald-50', 'text-emerald-700', 'border-emerald-100');
+                else msg.classList.add('bg-indigo-50', 'text-indigo-700', 'border-indigo-100');
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', () => MapApp.init());
+    </script>
+</body>
+
+</html>
